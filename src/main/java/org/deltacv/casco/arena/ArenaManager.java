@@ -1,4 +1,4 @@
-package org.deltacv.colina.arena;
+package org.deltacv.casco.arena;
 
 import com.google.gson.Gson;
 import com.onarandombox.MultiverseCore.MultiverseCore;
@@ -24,7 +24,7 @@ import static org.bukkit.Bukkit.getServer;
 
 public class ArenaManager {
 
-    public static final String ARENA_WORLD_PREFIX = "__colina__";
+    public static final String ARENA_WORLD_PREFIX = "__casco__";
 
     ArenaWorldData worldData = new ArenaWorldData();
 
@@ -116,10 +116,10 @@ public class ArenaManager {
             configPlayer = null;
 
             if(newLobbyLocation == null || newGameLocation == null) {
-                player.sendMessage(ChatColor.RED + "[Colina] No se han definido las ubicaciones. No se ha guardado la configuración.");
+                player.sendMessage(ChatColor.RED + "[Casco] No se han definido las ubicaciones. No se ha guardado la configuración.");
             } else {
                 if(newLobbyLocation.getWorld() != newGameLocation.getWorld()) {
-                    player.sendMessage(ChatColor.RED + "[Colina] Las ubicaciones deben estar en el mismo mundo. No se ha guardado la configuración.");
+                    player.sendMessage(ChatColor.RED + "[Casco] Las ubicaciones deben estar en el mismo mundo. No se ha guardado la configuración.");
                     return;
                 }
 
@@ -137,25 +137,25 @@ public class ArenaManager {
 
                 saveWorldData();
 
-                player.sendMessage(ChatColor.GREEN + "[Colina] Configuración guardada OK.");
+                player.sendMessage(ChatColor.GREEN + "[Casco] Configuración guardada OK.");
             }
         } else if(args.length == 1 && args[0].equalsIgnoreCase("lobby")) {
             newLobbyLocation = player.getLocation();
-            player.sendMessage(ChatColor.GREEN + "[Colina] Ubicación del lobby guardada.");
+            player.sendMessage(ChatColor.GREEN + "[Casco] Ubicación del lobby guardada.");
 
             if(newGameLocation == null) {
-                player.sendMessage("Ahora define la ubicación del juego con /colina config game");
+                player.sendMessage("Ahora define la ubicación del juego con /casco config game");
             } else {
-                player.sendMessage("Para salir de la configuración y guardar, usa /colina config");
+                player.sendMessage("Para salir de la configuración y guardar, usa /casco config");
             }
         } else if(args.length == 1 && args[0].equalsIgnoreCase("game")) {
             newGameLocation = player.getLocation();
-            player.sendMessage(ChatColor.GREEN + "[Colina] Ubicación del juego guardada.");
+            player.sendMessage(ChatColor.GREEN + "[Casco] Ubicación del juego guardada.");
 
             if(newLobbyLocation == null) {
-                player.sendMessage("Ahora define la ubicación del lobby con /colina config lobby");
+                player.sendMessage("Ahora define la ubicación del lobby con /casco config lobby");
             } else {
-                player.sendMessage("Para salir de la configuración y guardar, usa /colina config");
+                player.sendMessage("Para salir de la configuración y guardar, usa /casco config");
             }
         } else {
             configPlayer = player;
@@ -164,12 +164,12 @@ public class ArenaManager {
                 player.sendMessage("");
             }
 
-            player.sendMessage(ChatColor.YELLOW + "[Colina] INICIANDO CONFIGURACION DE ARENA PLANTILLA ---");
+            player.sendMessage(ChatColor.YELLOW + "[Casco] INICIANDO CONFIGURACION DE ARENA PLANTILLA ---");
             player.sendMessage("Define las siguientes ubicaciones, poniendo el jugador en el lugar:");
-            player.sendMessage("Ubicación del lobby con /colina config lobby");
-            player.sendMessage("Ubicación del juego con /colina config game");
+            player.sendMessage("Ubicación del lobby con /casco config lobby");
+            player.sendMessage("Ubicación del juego con /casco config game");
             player.sendMessage("");
-            player.sendMessage("Para salir de la configuración y guardar, usa /colina config");
+            player.sendMessage("Para salir de la configuración y guardar, usa /casco config");
         }
     }
 
@@ -178,7 +178,7 @@ public class ArenaManager {
         MultiverseWorld templateWorld = mvCore.getMVWorldManager().getMVWorld(worldData.templateWorldName);
 
         if(templateWorld == null) {
-            plugin.getServer().broadcastMessage(ChatColor.RED +"[Colina] Error: No se pudo encontrar el mundo de plantilla. No se puede crear una arena.");
+            plugin.getServer().broadcastMessage(ChatColor.RED +"[Casco] Error: No se pudo encontrar el mundo de plantilla. No se puede crear una arena.");
             return null;
         }
 
@@ -190,7 +190,7 @@ public class ArenaManager {
         MultiverseWorld newWorld = mvCore.getMVWorldManager().getMVWorld(newWorldName);
 
         if(newWorld == null) {
-            plugin.getServer().broadcastMessage(ChatColor.RED +"[Colina] Error: No se pudo clonar el mundo de plantilla. No se puede crear una arena.");
+            plugin.getServer().broadcastMessage(ChatColor.RED +"[Casco] Error: No se pudo clonar el mundo de plantilla. No se puede crear una arena.");
             return null;
         }
 
@@ -273,11 +273,9 @@ public class ArenaManager {
         return plugin.getConfig().getInt("pointsToWin");
     }
 
-    public int getZoneSize() {
-        return plugin.getConfig().getInt("zoneSize");
-    }
 
-    public int getZoneHeight() {
-        return plugin.getConfig().getInt("zoneHeight");
+    // taggedPlayersPerTenPlayers
+    public int getTaggedPlayersPerTenPlayers() {
+        return plugin.getConfig().getInt("taggedPlayersPerTenPlayers");
     }
 }

@@ -1,10 +1,8 @@
-# Colina arena config
+# Casco arena config
 maxPlayersPerArena: 30
 minPlayersToStart: 15
 lobbyDelaySeconds: 60
 gameDurationSeconds: 420
 
 pointsToWin: 200
-
-zoneSize: 6
-zoneHeight: 5
+taggedPlayersPerTenPlayers: 2

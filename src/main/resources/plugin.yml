@@ -1,11 +1,11 @@
-name: Colina
+name: Casco
 author: Sebastian Erives
 version: '1.0.0'
-main: org.deltacv.colina.Colina
+main: org.deltacv.casco.Casco
 api-version: '1.21'
 softdepend: ['Multiverse-Core', 'WorldBorderApi']
 
 commands:
-  colina:
-    description: "Colina plugin management"
-    usage: "colina <join|config|arenas|tp|start|stop>"
+  casco:
+    description: "Casco plugin management"
+    usage: "casco <join|config|arenas|tp|start|stop>"

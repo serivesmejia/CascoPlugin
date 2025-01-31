@@ -1,36 +1,26 @@
-package org.deltacv.colina.arena;
+package org.deltacv.casco.arena;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.Style;
-import net.kyori.adventure.text.format.TextColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.megavex.scoreboardlibrary.api.sidebar.Sidebar;
 import org.bukkit.*;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Firework;
-import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
-import org.joml.AxisAngle4f;
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
-import org.w3c.dom.css.RGBColor;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 
-public class Arena extends BukkitRunnable {
+public class Arena extends BukkitRunnable implements Listener {
 
     ArenaManager manager;
 
@@ -55,11 +45,19 @@ public class Arena extends BukkitRunnable {
     Player winningPlayer = null;
 
     HashMap<Player, Integer> playerScores = new HashMap<>();
-    HashMap<Player, Boolean> playerZoneStatuses = new HashMap<>();
+    HashMap<Player, Boolean> playerIsTagged = new HashMap<>();
+
+    int taggedPlayersCount = -1;
+
+    int playersCountOnBegin = -1;
 
     PotionEffect blindnessEffect = new PotionEffect(PotionEffectType.BLINDNESS, 20 * 10, 10000, false, false, false);
     PotionEffect slownessEffect = new PotionEffect(PotionEffectType.SLOWNESS, 20 * 10, 10000, false, false, false);
     PotionEffect invisibilityEffect = new PotionEffect(PotionEffectType.INVISIBILITY, 20 * 10, 1, false, false, false);
+
+    PotionEffect speedEffect = new PotionEffect(PotionEffectType.SPEED, 20 * 10, 2, false, false, false);
+
+    ItemStack exitItem = new ItemStack(Material.RED_BED);
 
     Sidebar sidebar;
 
@@ -70,9 +68,13 @@ public class Arena extends BukkitRunnable {
     public Arena(ArenaManager manager, Location lobbyLocation, Location gameLocation) {
         this.manager = manager;
 
+        ItemMeta im = Objects.requireNonNull(exitItem.getItemMeta());
+        im.setDisplayName(ChatColor.RED + "" + ChatColor.BOLD + "Salir al Lobby");
+        exitItem.setItemMeta(im);
+
         sidebar = manager.scoreboardLibrary.createSidebar();
 
-        sidebar.title(Component.text(ChatColor.YELLOW + "" + ChatColor.BOLD + "Rey de la Colina"));
+        sidebar.title(Component.text(ChatColor.YELLOW + "" + ChatColor.BOLD + "Rey del Objeto"));
         sidebar.line(0, Component.empty());
         sidebar.line(1, Component.text(ChatColor.GRAY + "Esperando..."));
         sidebar.line(2, Component.empty());
@@ -130,6 +132,7 @@ public class Arena extends BukkitRunnable {
                 for (Player player : players) {
                     player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(ChatColor.YELLOW + "" + ChatColor.BOLD + "Esperando jugadores... (" + players.size() + "/" + manager.getMaxPlayersPerArena() + ")"));
                     player.setGameMode(GameMode.ADVENTURE);
+                    player.getInventory().setItem(8, exitItem);
                 }
             }
 
@@ -175,13 +178,35 @@ public class Arena extends BukkitRunnable {
             }
 
             case BEGIN -> {
+                playersCountOnBegin = players.size();
+
                 manager.log.info("Begin game in arena " + gameLocation.getWorld().getName());
 
-                spawnZoneBorder();
-
                 for (Player player : players) {
+                    player.getInventory().clear();
                     player.sendMessage(ChatColor.GREEN + "La partida se acabará con el primer jugador que obtenga " + manager.getPointsToWin() + " puntos !");
                     player.teleport(gameLocation);
+                }
+
+                double playersRate = players.size() / 10d;
+                taggedPlayersCount = Math.max((int) (playersRate * manager.getTaggedPlayersPerTenPlayers()), 1);
+
+                // select random tagged players
+                Collections.shuffle(players);
+
+                ItemStack casco = new ItemStack(Material.LEATHER_HELMET);
+                // tint white and blue
+                LeatherArmorMeta meta = (LeatherArmorMeta) casco.getItemMeta();
+                meta.setColor(Color.BLUE);
+                casco.setItemMeta(meta);
+
+                for (int i = 0; i < taggedPlayersCount; i++) {
+                    players.get(i).getInventory().setHelmet(casco);
+
+                    players.get(i).sendMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "¡Tienes el casco! ¡Corre en cuanto puedas!");
+                    players.get(i).playSound(players.get(i).getLocation(), "entity.experience_orb.pickup", 100000, 1);
+
+                    playerIsTagged.put(players.get(i), true);
                 }
 
                 gameHaltTimestamp = System.currentTimeMillis();
@@ -193,24 +218,12 @@ public class Arena extends BukkitRunnable {
                     gameStartTimestamp = System.currentTimeMillis();
                     status = ArenaStatus.PLAYING;
 
-                    // give stick with knockback
-                    ItemStack stick = new ItemStack(Material.STICK);
-
-                    ItemMeta im = Objects.requireNonNull(stick.getItemMeta());
-                    im.setDisplayName(ChatColor.YELLOW + "" + ChatColor.BOLD + "Empuja-nator 2000");
-                    stick.setItemMeta(im);
-
-                    // give enchantment to stick
-                    stick.addUnsafeEnchantment(Enchantment.KNOCKBACK, 6);
-
                     for (Player player : players) {
-                        player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "A pelear !");
+                        if(!playerIsTagged.getOrDefault(player, false)) {
+                            player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "A pelear !");
+                        }
+
                         player.playSound(player.getLocation(), "entity.generic.explode", 100000, 1);
-
-                        // give stick with knockback
-                        player.getInventory().addItem(stick);
-
-                        playerZoneStatuses.put(player, true);
 
                         player.removePotionEffect(PotionEffectType.BLINDNESS);
                         player.removePotionEffect(PotionEffectType.SLOWNESS);
@@ -256,11 +269,6 @@ public class Arena extends BukkitRunnable {
                     }
                 }
 
-                if (remainingTimeSecs <= 0 || players.size() <= 1) {
-                    status = ArenaStatus.RESULTS;
-                    break;
-                }
-
                 previousRemainingTimeSecs = (int) remainingTimeSecs;
 
                 int remainingMinutes = (int) (remainingTimeSecs) / 60;
@@ -284,29 +292,26 @@ public class Arena extends BukkitRunnable {
                     sidebar.line(6 + i, Component.text(ChatColor.GRAY + "#" + (i + 1) + " " + ChatColor.YELLOW + entry.getKey().getName() + ChatColor.GRAY + " - " + ChatColor.YELLOW + entry.getValue() + " puntos"));
                 }
 
+                if (remainingTimeSecs <= 0 || (players.size() <= 1 && playersCountOnBegin > 1)) {
+                    status = ArenaStatus.RESULTS;
+                    break;
+                }
+
                 for (Player player : players) {
-                    boolean wasInsideZone = playerZoneStatuses.getOrDefault(player, false);
+                    boolean isTagged = playerIsTagged.getOrDefault(player, false);
 
-                    boolean isInsideZone = isInsideZone(player.getLocation(), gameLocation.getBlockX(), gameLocation.getBlockZ(), manager.getZoneSize() - 0.2f, manager.getZoneSize() - 0.2f);
-
-                    if (!isInsideZone) {
-                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(ChatColor.RED + "" + ChatColor.BOLD + "¡Saliste de la zona!" + ChatColor.GRAY + " - " + playerScores.getOrDefault(player, 0) + " puntos"));
-
-                        if (wasInsideZone) {
-                            player.playSound(player.getLocation(), "entity.experience_orb.pickup", 1, 1);
-                        }
+                    if(isTagged) {
+                        player.removePotionEffect(PotionEffectType.SPEED);
+                        player.setGlowing(true);
+                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(ChatColor.GREEN + "" + ChatColor.BOLD + "¡Tienes el casco!" + ChatColor.GRAY + " - " + playerScores.getOrDefault(player, 0) + " puntos"));
                     } else {
-                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(ChatColor.GREEN + "" + ChatColor.BOLD + "¡Estás en la zona!" + ChatColor.GRAY + " - " + playerScores.getOrDefault(player, 0) + " puntos"));
-
-                        if (!wasInsideZone) {
-                            player.playSound(player.getLocation(), "entity.experience_orb.pickup", 1, 1);
-                        }
+                        speedEffect.apply(player);
+                        player.setGlowing(false);
+                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(ChatColor.RED + "" + ChatColor.BOLD + "¡No tienes el casco!" + ChatColor.GRAY + " - " + playerScores.getOrDefault(player, 0) + " puntos"));
                     }
 
-                    playerZoneStatuses.put(player, isInsideZone);
-
                     if (System.currentTimeMillis() - lastZoneAwardTimestamp > 1000) {
-                        if (isInsideZone) {
+                        if (isTagged) {
                             int score = playerScores.getOrDefault(player, 0) + 1;
                             playerScores.put(player, score);
                             // noteblock tick
@@ -338,6 +343,11 @@ public class Arena extends BukkitRunnable {
                             .max(Map.Entry.comparingByValue())
                             .map(Map.Entry::getKey)
                             .orElse(null);
+
+                    if(winningPlayer == null) {
+                        status = ArenaStatus.END;
+                        break;
+                    }
 
                     for (Player player : players) {
                         player.getInventory().clear();
@@ -381,6 +391,7 @@ public class Arena extends BukkitRunnable {
 
             case END -> {
                 for(Player player : players) {
+                    player.setGlowing(false);
                     player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(""));
                 }
 
@@ -403,81 +414,44 @@ public class Arena extends BukkitRunnable {
         }
     }
 
-    private boolean isInsideZone(Location loc, float centerX, float centerZ, float sizeX, float sizeZ) {
-        float halfSizeX = sizeX / 2f;
-        float halfSizeZ = sizeZ / 2f;
+    public void notifyTag(Player damager, Player damaged) {
+        if(playerIsTagged.getOrDefault(damaged, false) && !playerIsTagged.getOrDefault(damager, false)) {
+            playerIsTagged.put(damager, true);
+            playerIsTagged.put(damaged, false);
 
-        return loc.getBlockX() >= centerX - halfSizeX && loc.getBlockX() <= centerX + halfSizeX &&
-                loc.getBlockZ() >= centerZ - halfSizeZ && loc.getBlockZ() <= centerZ + halfSizeZ;
+            ItemStack casco = new ItemStack(Material.LEATHER_HELMET);
+            // tint white and blue
+            LeatherArmorMeta meta = (LeatherArmorMeta) casco.getItemMeta();
+            meta.setColor(Color.BLUE);
+            casco.setItemMeta(meta);
+
+            damager.getInventory().setHelmet(casco);
+            damaged.getInventory().setHelmet(null);
+
+            damaged.sendMessage(ChatColor.RED + "¡Has pasado el casco a " + damager.getName() + "!");
+            damager.sendMessage(ChatColor.GREEN + "¡" + damaged.getName() + " te ha pasado el casco!");
+
+            damager.playSound(damager.getLocation(), "entity.experience_orb.pickup", 1, 1);
+            damaged.playSound(damaged.getLocation(), "entity.experience_orb.pickup", 1, 1);
+        }
     }
 
-    public void spawnZoneBorder() {
-        // north
-        gameLocation.getWorld().spawn(gameLocation.clone().subtract(
-                (manager.getZoneSize() / 2f),
-                0,
-                (-manager.getZoneSize() / 2f)
-        ), BlockDisplay.class, entity -> {
-            entity.setBlock(Material.LIGHT_BLUE_STAINED_GLASS.createBlockData());
+    public void notifyItemInteract(Player player, ItemStack item) {
+        if(item.getItemMeta().getDisplayName().equals(exitItem.getItemMeta().getDisplayName()) && status == ArenaStatus.LOBBY) {
+            World spawnWorld = Bukkit.getWorld("world");
+            Location spawnLocation = spawnWorld.getSpawnLocation();
 
-            entity.setTransformationMatrix(new Matrix4f()
-                    .scale(new Vector3f(manager.getZoneSize(), manager.getZoneHeight(), 0.1f))
-            );
+            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(""));
+            player.teleport(spawnLocation);
+            player.getInventory().clear();
 
-            entity.setGlowing(true);
-        });
+            sidebar.removePlayer(player);
+            players.remove(player);
 
-        // south
-        gameLocation.getWorld().spawn(gameLocation.clone().subtract(
-                (manager.getZoneSize() / 2f),
-                0,
-                (manager.getZoneSize() / 2f)
-        ), BlockDisplay.class, entity -> {
-            entity.setBlock(Material.LIGHT_BLUE_STAINED_GLASS.createBlockData());
-
-            entity.setTransformationMatrix(new Matrix4f()
-                    .scale(new Vector3f(manager.getZoneSize(), manager.getZoneHeight(), 0.1f))
-            );
-
-            entity.setGlowing(true);
-        });
-
-
-        // east
-        gameLocation.getWorld().spawn(gameLocation.clone().subtract(
-                (manager.getZoneSize() / 2f),
-                0,
-                (manager.getZoneSize() / 2f)
-        ), BlockDisplay.class, entity -> {
-            entity.setBlock(Material.LIGHT_BLUE_STAINED_GLASS.createBlockData());
-
-            entity.setTransformation(new Transformation(
-                    new Vector3f(),
-                    new AxisAngle4f((float) Math.toRadians(-90), 0, 1, 0),
-                    new Vector3f(new Vector3f(manager.getZoneSize(), manager.getZoneHeight(), 0.1f)),
-                    new AxisAngle4f(0, 0, 0, 0)
-            ));
-
-            entity.setGlowing(true);
-        });
-
-        // west
-        gameLocation.getWorld().spawn(gameLocation.clone().subtract(
-                (-manager.getZoneSize() / 2f),
-                0,
-                (manager.getZoneSize() / 2f)
-        ), BlockDisplay.class, entity -> {
-            entity.setBlock(Material.LIGHT_BLUE_STAINED_GLASS.createBlockData());
-
-            entity.setTransformation(new Transformation(
-                    new Vector3f(),
-                    new AxisAngle4f((float) Math.toRadians(-90), 0, 1, 0),
-                    new Vector3f(new Vector3f(manager.getZoneSize(), manager.getZoneHeight(), 0.1f)),
-                    new AxisAngle4f(0, 0, 0, 0)
-            ));
-
-            entity.setGlowing(true);
-        });
+            for(Player p : players) {
+                p.sendMessage(ChatColor.RED + player.getName() + " ha salido de la partida. (" + (players.size()) + "/" + manager.getMaxPlayersPerArena() + ")");
+            }
+        }
     }
 
     public double elapsedSecondsSinceCreation() {

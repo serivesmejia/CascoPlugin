@@ -1,18 +1,18 @@
-package org.deltacv.colina;
+package org.deltacv.casco;
 
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.deltacv.colina.arena.Arena;
-import org.deltacv.colina.arena.ArenaManager;
+import org.deltacv.casco.arena.Arena;
+import org.deltacv.casco.arena.ArenaManager;
 
-public class ColinaCommand implements CommandExecutor {
+public class CascoCommand implements CommandExecutor {
 
     ArenaManager arenaManager;
 
-    public ColinaCommand(ArenaManager arenaManager) {
+    public CascoCommand(ArenaManager arenaManager) {
         this.arenaManager = arenaManager;
     }
 
@@ -53,13 +53,13 @@ public class ColinaCommand implements CommandExecutor {
                         commandSender.sendMessage("No se ha encontrado al jugador.");
                     }
                 } else {
-                    commandSender.sendMessage("Uso: /colina join [player]");
+                    commandSender.sendMessage("Uso: /casco join [player]");
                 }
                 return true;
             case "tp":
                 if(args.length != 2) {
-                    commandSender.sendMessage("Uso: /colina tp <arena>");
-                    commandSender.sendMessage("Usa: \"/colina arenas\" para ver las arenas disponibles.");
+                    commandSender.sendMessage("Uso: /casco tp <arena>");
+                    commandSender.sendMessage("Usa: \"/casco arenas\" para ver las arenas disponibles.");
                     return true;
                 }
 
@@ -77,8 +77,8 @@ public class ColinaCommand implements CommandExecutor {
                 return true;
             case "start":
                 if(args.length != 2) {
-                    commandSender.sendMessage("Uso: /colina start <arena>");
-                    commandSender.sendMessage("Usa: \"/colina arenas\" para ver las arenas disponibles.");
+                    commandSender.sendMessage("Uso: /casco start <arena>");
+                    commandSender.sendMessage("Usa: \"/casco arenas\" para ver las arenas disponibles.");
                     return true;
                 }
 
@@ -93,8 +93,8 @@ public class ColinaCommand implements CommandExecutor {
                 commandSender.sendMessage("No se ha encontrado la arena o la arena no está en el estado correcto.");
             case "stop":
                 if(args.length != 2) {
-                    commandSender.sendMessage("Uso: /colina stop <arena>");
-                    commandSender.sendMessage("Usa: \"/colina arenas\" para ver las arenas disponibles.");
+                    commandSender.sendMessage("Uso: /casco stop <arena>");
+                    commandSender.sendMessage("Usa: \"/casco arenas\" para ver las arenas disponibles.");
                     return true;
                 }
 

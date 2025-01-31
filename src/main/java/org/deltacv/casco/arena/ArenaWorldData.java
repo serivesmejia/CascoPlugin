@@ -1,4 +1,4 @@
-package org.deltacv.colina.arena;
+package org.deltacv.casco.arena;
 
 public class ArenaWorldData {
     String templateWorldName;
