@@ -91,14 +91,19 @@ public class Arena extends BukkitRunnable implements Listener {
             player.setHealth(20);
             player.setSaturation(20);
 
-            if(!player.isOnline()) {
-                playersToRemove.add(player);
+            if(!player.isOnline() || player.getWorld() != lobbyLocation.getWorld()) {
+                if(!playersToRemove.contains(player)) {
+                    playersToRemove.add(player);
+                }
             }
         }
 
         for (Player player : playersToRemove) {
             players.remove(player);
             sidebar.removePlayer(player);
+            player.getInventory().clear();
+
+            manager.econ.withdrawPlayer(player, manager.econ.getBalance(player));
 
             for (Player p : players) {
                 p.sendMessage(ChatColor.YELLOW + player.getName() + " ha abandonado la partida. (" + players.size() + "/" + manager.getMaxPlayersPerArena() + ")");
@@ -313,6 +318,8 @@ public class Arena extends BukkitRunnable implements Listener {
                     if (System.currentTimeMillis() - lastZoneAwardTimestamp > 1000) {
                         if (isTagged) {
                             int score = playerScores.getOrDefault(player, 0) + 1;
+                            manager.econ.depositPlayer(player, 1);
+
                             playerScores.put(player, score);
                             // noteblock tick
                             player.playSound(player.getLocation(), "block.note_block.hat", 1, 1);
@@ -354,9 +361,6 @@ public class Arena extends BukkitRunnable implements Listener {
                         player.playSound(player.getLocation(), "entity.player.levelup", 1, 1);
                         player.sendMessage(ChatColor.YELLOW + "" + ChatColor.BOLD + "¡" + winningPlayer.getName() + " ha ganado la partida!");
                     }
-
-                    manager.econ.depositPlayer(winningPlayer, 1);
-                    winningPlayer.sendMessage(ChatColor.GREEN + "Has ganado 1 punto por ganar la partida.");
                 } else {
                     for (Player player : players) {
                         player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(ChatColor.YELLOW + "" + ChatColor.BOLD + "¡" + winningPlayer.getName() + " ha ganado la partida!"));
@@ -393,6 +397,9 @@ public class Arena extends BukkitRunnable implements Listener {
                 for(Player player : players) {
                     player.setGlowing(false);
                     player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(""));
+
+
+                    manager.econ.withdrawPlayer(player, manager.econ.getBalance(player));
                 }
 
                 sidebar.removePlayers(players);
@@ -428,8 +435,8 @@ public class Arena extends BukkitRunnable implements Listener {
             damager.getInventory().setHelmet(casco);
             damaged.getInventory().setHelmet(null);
 
-            damaged.sendMessage(ChatColor.RED + "¡Has pasado el casco a " + damager.getName() + "!");
-            damager.sendMessage(ChatColor.GREEN + "¡" + damaged.getName() + " te ha pasado el casco!");
+            damaged.sendMessage(ChatColor.RED + "¡" + damager.getName() + " te ha quitado el casco!");
+            damager.sendMessage(ChatColor.GREEN + "¡Le has quitado el casco a" + damaged.getName() + "!");
 
             damager.playSound(damager.getLocation(), "entity.experience_orb.pickup", 1, 1);
             damaged.playSound(damaged.getLocation(), "entity.experience_orb.pickup", 1, 1);
@@ -437,16 +444,20 @@ public class Arena extends BukkitRunnable implements Listener {
     }
 
     public void notifyItemInteract(Player player, ItemStack item) {
+        if(item == null) {
+            return;
+        }
+
         if(item.getItemMeta().getDisplayName().equals(exitItem.getItemMeta().getDisplayName()) && status == ArenaStatus.LOBBY) {
             World spawnWorld = Bukkit.getWorld("world");
             Location spawnLocation = spawnWorld.getSpawnLocation();
 
             player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacy(""));
             player.teleport(spawnLocation);
-            player.getInventory().clear();
 
-            sidebar.removePlayer(player);
-            players.remove(player);
+            if(!playersToRemove.contains(player)) {
+                playersToRemove.add(player);
+            }
 
             for(Player p : players) {
                 p.sendMessage(ChatColor.RED + player.getName() + " ha salido de la partida. (" + (players.size()) + "/" + manager.getMaxPlayersPerArena() + ")");
